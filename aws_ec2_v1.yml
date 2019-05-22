@@ -7,7 +7,7 @@
 
     - name: Provision a set of EC2 instances  #Basic EC2 instances will be provisioned in default subnet and vpc
       ec2:
-         key_name: DevOps-yks                 #Key Pair name for login
+         key_name: XXX-key                 #Key Pair name for login
          region: 'us-west-1'                  #AWS region
          instance_type: t2.micro              
          group: "DevOps-NSG"                  #Security Group
