@@ -1,0 +1,25 @@
+#https://docs.ansible.com/ansible/latest/modules/ec2_module.html
+- hosts: localhost
+  connection: local
+  gather_facts: False
+
+  tasks:
+
+    - name: Provision a set of EC2 instances  #Basic EC2 instances will be provisioned in default subnet and vpc
+      ec2:
+         key_name: DevOps-yks                 #Key Pair name for login
+         region: 'us-west-1'                  #AWS region
+         instance_type: t2.micro              
+         group: "DevOps-NSG"                  #Security Group
+         image: "ami-0019ef04ac50be30f"       #AMI image from the same region mentioned above
+         wait: true
+         exact_count: 3
+         count_tag:
+            Name: ByAnsible
+         instance_tags:
+            Name: aws_ec2_v1_ansible
+      register: ec2
+
+    - name: Add all instance public IPs to host group
+      add_host: hostname={{ item.public_ip }} groupname=ec2hosts
+      with_items: "{{ ec2.instances }}"

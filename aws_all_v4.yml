@@ -1,0 +1,144 @@
+#Launch AWS EC2 instance using Amazon Linux AMI with LB and Security group assigned to it
+#Create SG
+#Create Elastic Load Balance
+#Launch EC2 Instance and added ip in known_hosts
+#Install httpd and add a index page
+#Add Ec2 in ELB
+
+
+
+- name: Provision a sample AWS infrastructure
+  hosts: localhost
+  gather_facts: False
+  vars:
+    application: DevCops
+    keypair: DevOps-yks
+    image: ami-0019ef04ac50be30f                #Amazon Linux AMI
+    #image: ami-08949fb6466dd2cf3                #Red Hat Linux 8 AMI
+    #image: ami-069339bea0125f50d                 #Ubuntu 16.04 AMI
+    #image: ami-06397100adf427136                #Ubuntu 18.04 AMI
+    region: us-west-1
+    instance_count: 1                            #update counts according to your node
+    i_name: aws_all_v4_ansible
+
+  tasks:
+    - name: Get my system IP address
+      uri:
+        url: http://checkip.amazonaws.com/
+        return_content: yes
+      register: my_ip
+
+    - name: Create simple security group
+      ec2_group:
+        name: webservers
+        description: A security group for my system IP or 0.0.0.0/0
+        region: "{{region}}"
+        rules:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            #cidr_ip: "{{ my_ip.content | replace('\n', '') }}/32" 
+            cidr_ip:  0.0.0.0/0
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            #cidr_ip: "{{ my_ip.content | replace('\n', '') }}/32"
+            cidr_ip:  0.0.0.0/0
+        rules_egress:
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+      register: webservers_group
+
+    - name: Create the ELB to listen over http port 80 only
+      ec2_elb_lb:
+        name: "{{ application }}-load-balancer"
+        state: present
+        region: "{{region}}"
+        zones:
+          - us-west-1a
+          - us-west-1b
+        listeners:
+          - protocol: http
+            load_balancer_port: 80
+            instance_port: 80
+      register: elb
+
+    - name: Launch EC2 instances 
+      ec2:
+        key_name: "{{ keypair }}"
+        instance_type: t2.micro
+        image: "{{ image }}"
+        region: "{{region}}"
+        group_id:
+          - "{{ webservers_group.group_id }}"
+          - "{{ elb.elb.security_group_ids | first }}"
+        wait: yes
+        instance_tags:
+          Name: "{{ i_name }}"
+        exact_count: "{{ instance_count }}"
+        count_tag:
+          Name: "{{ application }}"
+      register: ec2_instances
+
+    - name: Store EC2 instance IPs to provision against
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: ec2_instance_ips
+      with_items: "{{ ec2_instances.tagged_instances }}"
+
+    - name: Wait for servers to come online
+      wait_for:
+        host: "{{ item.public_ip }}"
+        port: 22
+        timeout: 180
+      with_items: "{{ ec2_instances.tagged_instances }}"
+
+    - name: Add EC2 instances as known_hosts
+      known_hosts:
+        name: "{{ item.public_ip }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan -t rsa ' + item.public_ip) }}"
+      with_items: "{{ ec2_instances.tagged_instances }}"
+
+
+- hosts: ec2_instance_ips
+  remote_user: ec2-user
+  become: True
+  gather_facts: False
+  tasks:
+    - name: Install httpd in EC2 if os_family is Red Hat
+      yum:
+        name: httpd
+        state: present
+    #  when: ansible_os_family == "RedHat"
+    #- name: Install httpd in EC2 if os_family is Debian
+     # apt:
+      #  name: httpd
+       # state: present
+    #  when: ansible_os_family == "Debian"
+    - name: Create index file in httpd
+      file:
+        name: /var/www/html/index.html
+        state: touch
+    - name: Write Test content to index file
+      copy:
+        dest: /var/www/html/index.html
+        content: "<h1> Welcome to first page by yashsri.com</h1>"
+    - name: Restart httpd
+      service:
+        name: httpd
+        state: started
+
+- hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: Add each EC2 instance to the Load Balancer
+      ec2_elb:
+        state: present
+        #ec2_elbs: "{{ application }}-load-balancer"
+        ec2_elbs: DevCops-load-balancer
+        region: "{{ item.region }}"
+        instance_id: "{{ item.id }}"
+      with_items: "{{ ec2_instances.tagged_instances }}"
+

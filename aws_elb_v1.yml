@@ -1,0 +1,52 @@
+#https://docs.ansible.com/ansible/latest/modules/ec2_module.html
+#Create a EC2 Instances with User Data
+#Add instance to host group
+
+- name: Create a ELB
+  hosts: localhost
+  gather_facts: False
+  
+  #Variables
+  vars:
+    keypair: DevOps-yks
+    instance_type: t2.micro              
+    security_group: DevOps-NSG
+    image: ami-0019ef04ac50be30f
+    region: us-west-1
+
+#  tasks:
+#    - local_action:
+#        module: ec2_elb_lb
+#        name: "test-please-delete"
+#        state: present
+#        region: "{{ region }}"
+#        zones:
+#          - us-west-1a
+#          - us-west-1b
+#        listeners:
+#          - protocol: http # options are http, https, ssl, tcp
+#            load_balancer_port: 80
+#            instance_port: 80
+#            proxy_protocol: True
+#          - protocol: https
+#            load_balancer_port: 443
+#            instance_protocol: http # optional, defaults to value of protocol setting
+#            instance_port: 80
+#            # ssl certificate required for https or ssl
+#            ssl_certificate_id: "arn:aws:iam::123456789012:server-certificate/company/servercerts/ProdServerCert"
+#        register: elb
+
+  tasks:
+    - name: Create the ELB only listening over port 80
+      ec2_elb_lb:
+        name: nickhammond-load-balancer
+        state: present
+        region: us-west-1
+        zones:
+          - us-west-1a
+          - us-west-1b
+        listeners:
+          - protocol: http
+            load_balancer_port: 80
+            instance_port: 80
+  register: elb

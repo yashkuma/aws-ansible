@@ -1,0 +1,27 @@
+#https://docs.ansible.com/ansible/latest/modules/ec2_module.html
+#Create a EC2 Instances
+#Add instance to host group
+
+- name: Terminate instances
+  hosts: ec2-i
+  gather_facts: false
+  connection: local
+
+  vars: 
+    aws_region: aws-west-1
+
+ # tasks:
+ # - ec2_instance:
+ #     state: 'absent'
+ #     region: "{{ aws_region }}"
+ #     filters:
+ #       instance-state-name: running
+ #      instance_ids: '{{ ec2.instance_ids }}'
+
+  tasks:
+    - name: Terminate instances-1
+      ec2:
+        state: 'absent'
+        region: "{{ aws_region }}"
+        filters:
+          instance-state-name: running
