@@ -1,3 +1,4 @@
+#This is for installation in Ubuntu 16.04 LTS
 #!/bin/bash
 set -e -x
 
