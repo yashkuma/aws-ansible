@@ -12,7 +12,7 @@
   gather_facts: False
   vars:
     application: DevCops
-    keypair: DevOps-yks
+    keypair: XXX-key
     #image: ami-0019ef04ac50be30f                #Amazon Linux 
     #image: ami-08949fb6466dd2cf3                #Red Hat Linux 8
     image: ami-069339bea0125f50d                #Ubuntu 16.04
@@ -37,12 +37,10 @@
           - proto: tcp
             from_port: 80
             to_port: 80
-            #cidr_ip: "{{ my_ip.content | replace('\n', '') }}/32" 
             cidr_ip:  0.0.0.0/0
           - proto: tcp
             from_port: 22
             to_port: 22
-            #cidr_ip: "{{ my_ip.content | replace('\n', '') }}/32"
             cidr_ip:  0.0.0.0/0
         rules_egress:
           - proto: tcp
